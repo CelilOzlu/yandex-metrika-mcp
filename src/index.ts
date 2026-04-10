@@ -657,9 +657,42 @@ server.registerTool(
 );
 
 async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
-  console.error('MCPServer started on stdin/stdout');
+  if (process.env.MCP_TRANSPORT === 'sse') {
+    const express = (await import('express')).default;
+    const { SSEServerTransport } = await import('@modelcontextprotocol/sdk/server/sse.js');
+
+    const app = express();
+    const transports: Record<string, InstanceType<typeof SSEServerTransport>> = {};
+
+    app.use(express.json());
+    app.use(express.urlencoded({ extended: true }));
+
+    app.get('/sse', async (req: any, res: any) => {
+      const transport = new SSEServerTransport('/messages', res);
+      transports[transport.sessionId] = transport;
+      transport.onclose = () => { delete transports[transport.sessionId]; };
+      await server.connect(transport);
+    });
+
+    app.post('/messages', async (req: any, res: any) => {
+      const sessionId = req.query.sessionId as string;
+      const transport = transports[sessionId];
+      if (transport) {
+        await transport.handlePostMessage(req, res, req.body);
+      } else {
+        res.status(400).send('Unknown sessionId');
+      }
+    });
+
+    const PORT = process.env.PORT || 3000;
+    app.listen(PORT, () => {
+      console.error(`Yandex Metrika MCP Server running on SSE port ${PORT}`);
+    });
+  } else {
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error('MCPServer started on stdin/stdout');
+  }
 }
 
 main().catch((error) => {
