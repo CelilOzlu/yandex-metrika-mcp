@@ -1,5 +1,6 @@
 {
   "name": "yandex-metrika-mcp",
+  "version": "1.0.0",
   "main": "index.js",
   "type": "module",
   "scripts": {
@@ -16,6 +17,7 @@
     "zod": "^3.25.76"
   },
   "devDependencies": {
-    "@types/node": "^24.0.14"
+    "@types/node": "^24.0.14",
+    "typescript": "^5.8.3"
   }
 }
